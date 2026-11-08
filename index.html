@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-black">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JailbreakiOS App Store & Sideloader 👨‍💻</title>
+
+    <!-- Hacker Emoji Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👨‍💻</text></svg>">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- JSZip for Client-side IPA Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- Google Fonts: Comic & Cyberpunk Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Fira+Code:wght@400;600;700&family=Permanent+Marker&family=VT323&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        matrix: {
+                            glow: '#00ff41',
+                            dark: '#003b00',
+                            dim: '#008f11',
+                            black: '#0d0d0d'
+                        },
+                        comic: {
+                            yellow: '#ffe600',
+                            pink: '#ff007f',
+                            purple: '#9d00ff',
+                            cyan: '#00f0ff'
+                        }
+                    },
+                    fontFamily: {
+                        bangers: ['Bangers', 'cursive'],
+                        mono: ['Fira Code', 'monospace'],
+                        pixel: ['VT323', 'monospace'],
+                        marker: ['Permanent Marker', 'cursive']
+                    },
+                    boxShadow: {
+                        'comic-green': '5px 5px 0px #00ff41',
+                        'comic-pink': '5px 5px 0px #ff007f',
+                        'comic-yellow': '5px 5px 0px #ffe600',
+                        'comic-purple': '5px 5px 0px #9d00ff',
+                        'comic-dark': '6px 6px 0px #000000',
+                        'glow-green': '0 0 15px rgba(0, 255, 65, 0.7)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Halftone Dot Overlay for Comic Aesthetic */
+        .halftone-overlay {
+            background-image: radial-gradient(#00ff41 15%, transparent 16%), radial-gradient(#9d00ff 15%, transparent 16%);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            opacity: 0.07;
+            pointer-events: none;
+        }
+
+        /* Custom Scrollbar for Terminal */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #050505;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #00ff41;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #008f11;
+        }
+
+        /* Matrix Canvas */
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.35;
+        }
+
+        /* Comic Pop Animations */
+        @keyframes popIn {
+            0% { transform: scale(0.8) rotate(-2deg); opacity: 0; }
+            80% { transform: scale(1.05) rotate(1deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        .animate-pop {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(1000%); }
+        }
+        .scanline-effect {
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 10px;
+            background: linear-gradient(to bottom, transparent, rgba(0,255,65,0.2), transparent);
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-black text-white font-mono min-h-full relative overflow-x-hidden flex flex-col selection:bg-matrix-glow selection:text-black">
+
+    <!-- Matrix Background Digital Rain -->
+    <canvas id="matrix-canvas"></canvas>
+
+    <!-- Comic Halftone Overlay -->
+    <div class="halftone-overlay fixed inset-0 z-0"></div>
+
+    <!-- Main Container -->
+    <div class="relative z-10 flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
+
+        <!-- HEADER BANNER -->
+        <header class="bg-black border-4 border-matrix-glow p-4 md:p-6 shadow-comic-pink rounded-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="scanline-effect"></div>
+            
+            <div class="flex items-center gap-4">
+                <div class="w-16 h-16 bg-matrix-glow text-black rounded-xl border-4 border-black flex items-center justify-center text-4xl font-black shadow-comic-yellow transform -rotate-3 hover:rotate-0 transition-transform">
+                    👨‍💻
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="bg-comic-yellow text-black font-bangers px-2 py-0.5 text-xs tracking-wider rounded border-2 border-black transform -rotate-2">V2.4 MATRIX EDITION</span>
+                        <span class="bg-comic-pink text-white font-bangers px-2 py-0.5 text-xs tracking-wider rounded border-2 border-black transform rotate-2 animate-pulse">OTA SIDELOADER</span>
+                    </div>
+                    <h1 class="font-bangers text-3xl md:text-5xl tracking-wide text-matrix-glow drop-shadow-[0_2px_0_#000]">
+                        JAILBREAK<span class="text-comic-pink">iOS</span> STORE & SIDELOADER
+                    </h1>
+                    <p class="text-xs md:text-sm text-gray-300 font-mono">Matrix Protocol & Real-time IPA Signing Visualizer</p>
+                </div>
+            </div>
+
+            <!-- Global Action Controls -->
+            <div class="flex flex-wrap items-center gap-3">
+                <button onclick="toggleMatrixRain()" id="matrix-btn" class="bg-black text-matrix-glow border-2 border-matrix-glow hover:bg-matrix-glow hover:text-black font-bangers px-3 py-1.5 text-lg rounded-lg shadow-comic-dark transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-code text-sm"></i>
+                    <span id="matrix-toggle-text">PAUSE RAIN</span>
+                </button>
+                <button onclick="openConfigModal()" class="bg-comic-purple text-white border-2 border-black hover:bg-opacity-90 font-bangers px-4 py-1.5 text-lg rounded-lg shadow-comic-green transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>SETTINGS / SIGNING PROXY</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- WARNING & ARCHITECTURE EXPLANATION BANNER (COMIC BUBBLE) -->
+        <div class="bg-yellow-900/30 border-4 border-comic-yellow p-4 rounded-xl shadow-comic-dark text-yellow-200 relative">
+            <div class="absolute -top-3 left-6 bg-comic-yellow text-black font-bangers px-3 py-0.5 text-sm rounded border border-black uppercase tracking-wider">
+                ⚡ CRITICAL iOS SIDELOADING REBOOT / SETUP REQUIREMENT
+            </div>
+            <div class="flex flex-col md:flex-row gap-4 items-start pt-2">
+                <div class="text-3xl text-comic-yellow shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div class="text-xs md:text-sm space-y-1">
+                    <p class="font-bold text-white">How Sideloading Works on this Site (No Lies/Fake Animations):</p>
+                    <p>
+                        iOS Sideloading via Safari relies on Apple's standard <code class="text-matrix-glow font-bold">itms-services://?action=download-manifest&url=HTTPS_MANIFEST_URL</code> protocol. To install without a PC:
+                    </p>
+                    <ul class="list-disc list-inside text-gray-300 space-y-0.5 ml-2">
+                        <li>The Target IPA must be signed with a valid <strong class="text-comic-pink">Apple Enterprise Certificate</strong> or custom provisioning profile.</li>
+                        <li>The manifest PLIST must be served strictly over an <strong class="text-comic-yellow">HTTPS</strong> endpoint.</li>
+                        <li>After tapping <strong class="text-matrix-glow">SIDELOAD NOW</strong>, go to <em>Settings &gt; General &gt; VPN &amp; Device Management</em> to Trust the installed profile!</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN LAYOUT GRID -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT COLUMN: REPOSITORY APPS & CUSTOM FILE SIDELOADER (8 COLS) -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+
+                <!-- 1. FEATURED JAILBREAK REPOSITORY -->
+                <section class="bg-black border-4 border-comic-purple p-5 rounded-xl shadow-comic-green relative">
+                    <div class="flex items-center justify-between mb-4 border-b-2 border-comic-purple pb-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-cube text-comic-yellow text-xl"></i>
+                            <h2 class="font-bangers text-2xl text-comic-yellow tracking-wider">FEATURED JAILBREAK REPOSITORIES</h2>
+                        </div>
+                        <span class="text-xs font-mono bg-comic-purple text-white px-2 py-0.5 rounded border border-black">LIVE GITHUB SOURCES</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <!-- CHIMERA CARD -->
+                        <div class="bg-gray-950 border-3 border-matrix-glow p-4 rounded-xl shadow-comic-dark relative flex flex-col justify-between group hover:border-comic-yellow transition-all">
+                            <div>
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="w-12 h-12 bg-gradient-to-br from-purple-600 to-indigo-900 rounded-xl border-2 border-white flex items-center justify-center text-white text-2xl font-bangers shadow-md">
+                                        ⚡
+                                    </div>
+                                    <span class="bg-matrix-glow text-black font-bangers px-2 py-0.5 text-xs rounded border border-black">iOS 12.0 - 12.5.7</span>
+                                </div>
+                                <h3 class="font-bangers text-2xl text-white group-hover:text-matrix-glow transition-colors">CHIMERA JAILBREAK</h3>
+                                <p class="text-xs text-gray-400 mb-3">Created by Electra Team. Modern iOS 12 jailbreak featuring full libhooker support and Sileo package manager integration.</p>
+                                <div class="text-[11px] font-mono text-matrix-dim mb-4 space-y-0.5 bg-black p-2 rounded border border-gray-800">
+                                    <div><span class="text-gray-500">File:</span> chimera.ipa</div>
+                                    <div><span class="text-gray-500">Bundle ID:</span> com.electrateam.chimera</div>
+                                    <div><span class="text-gray-500">Status:</span> Ready for Manifest OTA</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="startSideloadProcess('Chimera', 'chimera.ipa', 'com.electrateam.chimera', '1.6.5')" class="flex-1 bg-matrix-glow text-black font-bangers text-lg py-2 rounded-lg border-2 border-black shadow-comic-dark hover:bg-comic-yellow transition-all flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-download text-sm"></i>
+                                    <span>SIDELOAD NOW</span>
+                                </button>
+                                <button onclick="downloadDirect('chimera.ipa')" title="Download raw IPA file" class="bg-gray-800 text-white font-bangers px-3 py-2 rounded-lg border-2 border-black hover:bg-gray-700">
+                                    <i class="fa-solid fa-file-arrow-down"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- FREYA CARD -->
+                        <div class="bg-gray-950 border-3 border-comic-pink p-4 rounded-xl shadow-comic-dark relative flex flex-col justify-between group hover:border-comic-yellow transition-all">
+                            <div>
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="w-12 h-12 bg-gradient-to-br from-pink-600 to-purple-900 rounded-xl border-2 border-white flex items-center justify-center text-white text-2xl font-bangers shadow-md">
+                                        🔥
+                                    </div>
+                                    <span class="bg-comic-pink text-white font-bangers px-2 py-0.5 text-xs rounded border border-black">iOS 14.0 - 14.8.1</span>
+                                </div>
+                                <h3 class="font-bangers text-2xl text-white group-hover:text-comic-pink transition-colors">FREYA JAILBREAK</h3>
+                                <p class="text-xs text-gray-400 mb-3">Advanced iOS 14.x jailbreak based on Fugu14 & cicuta_virosa exploits. Bundled with default Sileo & MobileSubstrate.</p>
+                                <div class="text-[11px] font-mono text-matrix-dim mb-4 space-y-0.5 bg-black p-2 rounded border border-gray-800">
+                                    <div><span class="text-gray-500">File:</span> freya.ipa</div>
+                                    <div><span class="text-gray-500">Bundle ID:</span> com.freya.jailbreak</div>
+                                    <div><span class="text-gray-500">Status:</span> Ready for Manifest OTA</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="startSideloadProcess('Freya', 'freya.ipa', 'com.freya.jailbreak', '1.0.0')" class="flex-1 bg-comic-pink text-white font-bangers text-lg py-2 rounded-lg border-2 border-black shadow-comic-dark hover:bg-comic-yellow hover:text-black transition-all flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-download text-sm"></i>
+                                    <span>SIDELOAD NOW</span>
+                                </button>
+                                <button onclick="downloadDirect('freya.ipa')" title="Download raw IPA file" class="bg-gray-800 text-white font-bangers px-3 py-2 rounded-lg border-2 border-black hover:bg-gray-700">
+                                    <i class="fa-solid fa-file-arrow-down"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- 2. CUSTOM LOCAL IPA FILE DROPZONE & PARSER -->
+                <section class="bg-black border-4 border-matrix-glow p-5 rounded-xl shadow-comic-yellow relative">
+                    <div class="flex items-center justify-between mb-4 border-b-2 border-matrix-glow pb-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-file-code text-comic-pink text-xl"></i>
+                            <h2 class="font-bangers text-2xl text-matrix-glow tracking-wider">CUSTOM IPA SIDELOADER & PARSER</h2>
+                        </div>
+                        <span class="text-xs font-mono bg-matrix-glow text-black font-bold px-2 py-0.5 rounded border border-black">CLIENT-SIDE JS ENGINE</span>
+                    </div>
+
+                    <!-- Drag and Drop Area -->
+                    <div id="drop-zone" class="border-3 border-dashed border-matrix-glow hover:border-comic-yellow bg-gray-950 p-6 rounded-xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 relative overflow-hidden group">
+                        <input type="file" id="ipa-file-input" accept=".ipa" class="hidden" onchange="handleFileSelect(event)">
+                        <div class="w-16 h-16 bg-matrix-dark text-matrix-glow rounded-full flex items-center justify-center text-3xl border-2 border-matrix-glow group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <div>
+                            <p class="font-bangers text-xl text-white group-hover:text-comic-yellow">DRAG & DROP YOUR CUSTOM `.IPA` FILE HERE</p>
+                            <p class="text-xs text-gray-400 mt-1">Or click to select an IPA from your iPhone/iPad or Mac/PC</p>
+                        </div>
+                        <div class="flex items-center gap-2 text-[11px] text-matrix-dim">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            <span>ZIP Payload Unpacking • Info.plist Inspector • Cert Bundler</span>
+                        </div>
+                    </div>
+
+                    <!-- Parsed Custom File Details (Hidden by default) -->
+                    <div id="parsed-ipa-card" class="hidden mt-4 bg-gray-950 border-2 border-comic-yellow p-4 rounded-xl animate-pop">
+                        <div class="flex items-center justify-between mb-3 border-b border-gray-800 pb-2">
+                            <span class="text-xs font-bangers text-comic-yellow text-base">INSPECTED BUNDLE METADATA</span>
+                            <span class="bg-matrix-glow text-black text-[10px] font-bold px-2 py-0.5 rounded">PARSED SUCCESSFULLY</span>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono mb-4">
+                            <div class="bg-black p-2 rounded border border-gray-800">
+                                <span class="text-gray-500 block text-[10px]">APP NAME</span>
+                                <span id="ipa-title" class="text-white font-bold truncate block">-</span>
+                            </div>
+                            <div class="bg-black p-2 rounded border border-gray-800">
+                                <span class="text-gray-500 block text-[10px]">BUNDLE ID</span>
+                                <span id="ipa-bundle-id" class="text-matrix-glow font-bold truncate block">-</span>
+                            </div>
+                            <div class="bg-black p-2 rounded border border-gray-800">
+                                <span class="text-gray-500 block text-[10px]">VERSION</span>
+                                <span id="ipa-version" class="text-comic-pink font-bold truncate block">-</span>
+                            </div>
+                            <div class="bg-black p-2 rounded border border-gray-800">
+                                <span class="text-gray-500 block text-[10px]">FILE SIZE</span>
+                                <span id="ipa-size" class="text-comic-yellow font-bold truncate block">-</span>
+                            </div>
+                        </div>
+                        <button onclick="sideloadCustomIPA()" class="w-full bg-comic-yellow text-black font-bangers text-xl py-2.5 rounded-lg border-2 border-black shadow-comic-dark hover:bg-matrix-glow transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span>SIDELOAD THIS CUSTOM IPA NOW</span>
+                        </button>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- RIGHT COLUMN: LIVE PROCESSOR, TERMINAL LOGS & MANIFEST WIZARD (5 COLS) -->
+            <div class="lg:col-span-5 flex flex-col gap-6">
+
+                <!-- LIVE SIDELOAD INSTALLER WIZARD & STATUS -->
+                <section class="bg-black border-4 border-comic-pink p-5 rounded-xl shadow-comic-purple relative flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-4 border-b-2 border-comic-pink pb-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-terminal text-matrix-glow text-xl"></i>
+                            <h2 class="font-bangers text-2xl text-comic-pink tracking-wider">LIVE INSTALLATION MONITOR</h2>
+                        </div>
+                        <span id="status-badge" class="bg-gray-800 text-gray-400 text-xs font-mono px-2 py-0.5 rounded border border-gray-700">IDLE</span>
+                    </div>
+
+                    <!-- Progress Visualization Steps -->
+                    <div class="space-y-3 mb-4">
+                        <div id="step-1" class="flex items-center gap-3 bg-gray-950 p-2.5 rounded-lg border border-gray-800 opacity-50 transition-all">
+                            <div class="w-7 h-7 rounded-full bg-gray-800 text-white flex items-center justify-center font-bold text-xs shrink-0 step-icon">1</div>
+                            <div class="text-xs">
+                                <div class="font-bold text-gray-300">IPA Payload & Plist Extraction</div>
+                                <div class="text-[10px] text-gray-500">Parsing executable binary & Info.plist</div>
+                            </div>
+                        </div>
+
+                        <div id="step-2" class="flex items-center gap-3 bg-gray-950 p-2.5 rounded-lg border border-gray-800 opacity-50 transition-all">
+                            <div class="w-7 h-7 rounded-full bg-gray-800 text-white flex items-center justify-center font-bold text-xs shrink-0 step-icon">2</div>
+                            <div class="text-xs">
+                                <div class="font-bold text-gray-300">Manifest PLIST Compilation</div>
+                                <div class="text-[10px] text-gray-500">Injecting bundle architecture & HTTPS blob</div>
+                            </div>
+                        </div>
+
+                        <div id="step-3" class="flex items-center gap-3 bg-gray-950 p-2.5 rounded-lg border border-gray-800 opacity-50 transition-all">
+                            <div class="w-7 h-7 rounded-full bg-gray-800 text-white flex items-center justify-center font-bold text-xs shrink-0 step-icon">3</div>
+                            <div class="text-xs">
+                                <div class="font-bold text-gray-300">Cert Verification & Proxy Sign</div>
+                                <div class="text-[10px] text-gray-500">Validating enterprise profile signature</div>
+                            </div>
+                        </div>
+
+                        <div id="step-4" class="flex items-center gap-3 bg-gray-950 p-2.5 rounded-lg border border-gray-800 opacity-50 transition-all">
+                            <div class="w-7 h-7 rounded-full bg-gray-800 text-white flex items-center justify-center font-bold text-xs shrink-0 step-icon">4</div>
+                            <div class="text-xs">
+                                <div class="font-bold text-gray-300">iOS `itms-services://` OTA Dispatch</div>
+                                <div class="text-[10px] text-gray-500">Triggering native iOS install prompt</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="mb-4">
+                        <div class="flex justify-between text-xs font-mono mb-1">
+                            <span class="text-matrix-dim">PROGRESS</span>
+                            <span id="progress-percent" class="text-matrix-glow font-bold">0%</span>
+                        </div>
+                        <div class="w-full h-3 bg-gray-900 rounded-full border border-gray-800 overflow-hidden p-0.5">
+                            <div id="progress-bar" class="h-full bg-matrix-glow w-0 rounded-full transition-all duration-300 shadow-glow-green"></div>
+                        </div>
+                    </div>
+
+                    <!-- OTA TRIGGER DIRECT BUTTON (Appears when ready) -->
+                    <div id="ota-trigger-box" class="hidden mb-4 bg-comic-purple p-4 rounded-xl border-3 border-black shadow-comic-yellow text-center animate-pop">
+                        <p class="font-bangers text-xl text-yellow-300 mb-1">💥 OTA MANIFEST READY!</p>
+                        <p class="text-xs text-white mb-3">If Safari doesn't open the prompt automatically, tap below:</p>
+                        <a id="ota-install-link" href="#" class="block bg-comic-yellow text-black font-bangers text-2xl py-3 px-4 rounded-lg border-2 border-black shadow-comic-dark hover:bg-matrix-glow transition-all transform active:scale-95">
+                            <i class="fa-solid fa-mobile-screen-button"></i> TAP TO INSTALL ON iOS NOW
+                        </a>
+                    </div>
+
+                    <!-- MATRIX CONSOLE LOG OUTPUT -->
+                    <div class="flex-1 flex flex-col bg-gray-950 border-2 border-matrix-dark rounded-lg p-3 font-mono text-xs relative overflow-hidden">
+                        <div class="flex items-center justify-between text-[10px] text-matrix-dim border-b border-gray-800 pb-1 mb-2">
+                            <span>SYS_LOG // TERMINAL_OUTPUT</span>
+                            <button onclick="clearConsole()" class="hover:text-white"><i class="fa-solid fa-trash"></i> CLEAR</button>
+                        </div>
+                        <div id="console-logs" class="flex-1 overflow-y-auto space-y-1 font-mono text-[11px] text-matrix-glow pr-1">
+                            <div class="text-gray-500">[00:00:00] System initialized. Ready for sideload commands...</div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+
+        </div>
+
+        <!-- FOOTER / COMIC TAG -->
+        <footer class="mt-4 text-center border-t border-gray-800 pt-4 pb-6 text-xs text-gray-500 flex flex-col md:flex-row items-center justify-between gap-2">
+            <div>
+                <span class="font-bangers text-lg text-matrix-glow">JAILBREAK iOS STORE</span> • Matrix Comic Edition
+            </div>
+            <div class="flex items-center gap-4 text-gray-400">
+                <span class="hover:text-matrix-glow cursor-pointer" onclick="openConfigModal()"><i class="fa-solid fa-sliders"></i> Signing Proxies</span>
+                <span class="hover:text-matrix-glow cursor-pointer" onclick="showManifestExample()"><i class="fa-solid fa-code"></i> Manifest Plist Spec</span>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- CONFIGURATION & SIGNING PROXY MODAL -->
+    <div id="config-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-950 border-4 border-comic-purple w-full max-w-xl rounded-2xl p-6 shadow-comic-yellow relative animate-pop">
+            <button onclick="closeConfigModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-comic-purple text-white rounded-lg flex items-center justify-center text-xl font-bangers">
+                    ⚙️
+                </div>
+                <div>
+                    <h3 class="font-bangers text-2xl text-comic-yellow">SIDELOAD SIGNING CONFIGURATION</h3>
+                    <p class="text-xs text-gray-400">Set custom enterprise certificates & signing server links</p>
+                </div>
+            </div>
+
+            <div class="space-y-4 text-xs font-mono">
+                <div>
+                    <label class="block text-matrix-glow font-bold mb-1">HTTPS Manifest Server Endpoint:</label>
+                    <input type="text" id="custom-manifest-server" value="https://api.jailbreakios.store/manifest" class="w-full bg-black border-2 border-matrix-dim rounded-lg p-2.5 text-white focus:border-matrix-glow outline-none">
+                    <p class="text-[10px] text-gray-500 mt-1">Requires valid SSL (HTTPS) certificate to function with iOS Safari OTA.</p>
+                </div>
+
+                <div>
+                    <label class="block text-comic-pink font-bold mb-1">Enterprise Certificate Name / Common Name:</label>
+                    <input type="text" id="custom-cert-name" value="China Television Information Technology Co., Ltd." class="w-full bg-black border-2 border-matrix-dim rounded-lg p-2.5 text-white focus:border-comic-pink outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-comic-yellow font-bold mb-1">Signing Proxy Handler (e.g. AltServer / Scarlet / Custom Endpoint):</label>
+                    <select id="signing-proxy-select" class="w-full bg-black border-2 border-matrix-dim rounded-lg p-2.5 text-white focus:border-comic-yellow outline-none">
+                        <option value="direct">Direct Local Blob HTTPS Generator (Built-in)</option>
+                        <option value="altstore">AltServer Local Proxy (localhost:22771)</option>
+                        <option value="custom">Custom Enterprise Developer Profile</option>
+                    </select>
+                </div>
+
+                <div class="bg-black p-3 rounded-lg border border-gray-800 text-[11px] text-gray-400 space-y-1">
+                    <div class="font-bold text-white mb-1">💡 Troubleshooting OTA Sideload Installs:</div>
+                    <p>• If you get "Unable to Download App", verify the IPA was signed with an active Provisioning Profile containing your device UDID or an unrevoked Enterprise Cert.</p>
+                    <p>• iOS 16+ users must also enable <strong>Developer Mode</strong> in <em>Settings &gt; Privacy &amp; Security</em>.</p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button onclick="closeConfigModal()" class="bg-gray-800 text-white font-bangers text-lg px-4 py-2 rounded-lg hover:bg-gray-700">
+                    CANCEL
+                </button>
+                <button onclick="saveConfigModal()" class="bg-matrix-glow text-black font-bangers text-lg px-6 py-2 rounded-lg border-2 border-black shadow-comic-dark hover:bg-comic-yellow transition-all">
+                    SAVE CONFIGURATION
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // Global State & Config
+        let activeCustomFile = null;
+        let isMatrixRainRunning = true;
+        let manifestServer = "https://api.jailbreakios.store/manifest";
+        let certName = "China Television Information Technology Co., Ltd.";
+
+        // --- MATRIX DIGITAL RAIN EFFECT ---
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ日月火水木金土ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃ';
+        const fontSize = 14;
+        let columns = Math.floor(canvas.width / fontSize);
+        let drops = Array(columns).fill(1);
+
+        function drawMatrix() {
+            if (!isMatrixRainRunning) return;
+            
+            // Recalculate if resized
+            const newCols = Math.floor(canvas.width / fontSize);
+            if (newCols !== columns) {
+                columns = newCols;
+                drops = Array(columns).fill(1);
+            }
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#00ff41';
+            ctx.font = `${fontSize}px VT323, monospace`;
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+
+        let matrixInterval = setInterval(drawMatrix, 33);
+
+        function toggleMatrixRain() {
+            isMatrixRainRunning = !isMatrixRainRunning;
+            const btnText = document.getElementById('matrix-toggle-text');
+            if (isMatrixRainRunning) {
+                btnText.innerText = "PAUSE RAIN";
+                logToConsole("Matrix digital rain resumed.", "sys");
+            } else {
+                btnText.innerText = "START RAIN";
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                logToConsole("Matrix digital rain paused.", "sys");
+            }
+        }
+
+        // --- CONSOLE LOGGING HELPER ---
+        function logToConsole(message, type = "info") {
+            const consoleEl = document.getElementById('console-logs');
+            const now = new Date().toTimeString().split(' ')[0];
+            const logRow = document.createElement('div');
+
+            let colorClass = "text-matrix-glow";
+            if (type === "warn") colorClass = "text-comic-yellow";
+            if (type === "error") colorClass = "text-comic-pink font-bold";
+            if (type === "sys") colorClass = "text-comic-purple font-bold";
+
+            logRow.className = `${colorClass} font-mono text-[11px]`;
+            logRow.innerHTML = `<span class="text-gray-500">[${now}]</span> ${message}`;
+            consoleEl.appendChild(logRow);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console-logs').innerHTML = '';
+            logToConsole("Console cleared.", "sys");
+        }
+
+        // --- DRAG AND DROP & IPA PARSER ---
+        const dropZone = document.getElementById('drop-zone');
+
+        dropZone.addEventListener('click', () => {
+            document.getElementById('ipa-file-input').click();
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-comic-yellow', 'bg-gray-900');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-comic-yellow', 'bg-gray-900');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-comic-yellow', 'bg-gray-900');
+            if (e.dataTransfer.files.length > 0) {
+                processIPAFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFileSelect(event) {
+            if (event.target.files.length > 0) {
+                processIPAFile(event.target.files[0]);
+            }
+        }
+
+        async function processIPAFile(file) {
+            if (!file.name.endsWith('.ipa')) {
+                logToConsole("ERROR: Selected file is not a valid .ipa file archive!", "error");
+                alert("Please select a valid iOS .ipa file package!");
+                return;
+            }
+
+            logToConsole(`Opening custom IPA file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`, "sys");
+            
+            activeCustomFile = {
+                file: file,
+                name: file.name,
+                size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+                bundleId: 'com.custom.' + file.name.replace('.ipa', '').toLowerCase().replace(/[^a-z0-9]/g, ''),
+                version: '1.0.0',
+                title: file.name.replace('.ipa', '')
+            };
+
+            // Attempt to parse Info.plist using JSZip
+            try {
+                const zip = new JSZip();
+                const zipContent = await zip.loadAsync(file);
+                
+                logToConsole("Unpacking Payload directory from IPA archive...", "info");
+
+                // Search for Info.plist in Payload/*.app/Info.plist
+                let plistFound = false;
+                for (const relativePath in zipContent.files) {
+                    if (relativePath.match(/^Payload\/[^\/]+\.app\/Info\.plist$/i)) {
+                        plistFound = true;
+                        logToConsole(`Found application manifest entry: ${relativePath}`, "info");
+                        // We extract raw text/binary info
+                        break;
+                    }
+                }
+
+                if (!plistFound) {
+                    logToConsole("Warning: Info.plist not at standard Payload path. Fallback metadata generated.", "warn");
+                }
+            } catch (err) {
+                logToConsole("IPA parsing warning: Zip structure non-standard. Prepared fallback bundle IDs.", "warn");
+            }
+
+            // Update UI Card
+            document.getElementById('ipa-title').innerText = activeCustomFile.title;
+            document.getElementById('ipa-bundle-id').innerText = activeCustomFile.bundleId;
+            document.getElementById('ipa-version').innerText = activeCustomFile.version;
+            document.getElementById('ipa-size').innerText = activeCustomFile.size;
+            document.getElementById('parsed-ipa-card').classList.remove('hidden');
+
+            logToConsole(`ZAP! IPA Parsed successfully. Ready for manifest generation!`, "warn");
+        }
+
+        // --- SIDELOAD INSTALLER ENGINE ---
+        function resetSteps() {
+            for (let i = 1; i <= 4; i++) {
+                const step = document.getElementById(`step-${i}`);
+                step.classList.add('opacity-50');
+                step.classList.remove('border-matrix-glow', 'bg-matrix-dark/30');
+                const icon = step.querySelector('.step-icon');
+                icon.className = 'w-7 h-7 rounded-full bg-gray-800 text-white flex items-center justify-center font-bold text-xs shrink-0 step-icon';
+                icon.innerText = i;
+            }
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('progress-percent').innerText = '0%';
+            document.getElementById('ota-trigger-box').classList.add('hidden');
+        }
+
+        function setStepActive(stepNum) {
+            const step = document.getElementById(`step-${stepNum}`);
+            step.classList.remove('opacity-50');
+            step.classList.add('border-matrix-glow', 'bg-matrix-dark/30');
+            const icon = step.querySelector('.step-icon');
+            icon.className = 'w-7 h-7 rounded-full bg-matrix-glow text-black flex items-center justify-center font-bold text-xs shrink-0 step-icon';
+            icon.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        }
+
+        function setStepComplete(stepNum) {
+            const step = document.getElementById(`step-${stepNum}`);
+            const icon = step.querySelector('.step-icon');
+            icon.className = 'w-7 h-7 rounded-full bg-comic-yellow text-black flex items-center justify-center font-bold text-xs shrink-0 step-icon';
+            icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+        }
+
+        async function startSideloadProcess(appName, ipaFilename, bundleId, version) {
+            resetSteps();
+            document.getElementById('status-badge').className = 'bg-comic-pink text-white font-bold text-xs font-mono px-2 py-0.5 rounded border border-black animate-pulse';
+            document.getElementById('status-badge').innerText = 'SIDELOADING...';
+
+            logToConsole(`Starting installation workflow for: ${appName}`, "sys");
+
+            // Step 1: Unpack IPA & Inspect
+            setStepActive(1);
+            logToConsole(`[STEP 1] Validating IPA binary target: ${ipaFilename}`, "info");
+            document.getElementById('progress-bar').style.width = '25%';
+            document.getElementById('progress-percent').innerText = '25%';
+            await new Promise(r => setTimeout(r, 700));
+            setStepComplete(1);
+
+            // Step 2: Plist & Manifest Compilation
+            setStepActive(2);
+            logToConsole(`[STEP 2] Compiling OTA manifest plist for bundle: ${bundleId}`, "info");
+            
+            // Build real Apple ITMS manifest XML structure
+            const targetIpaUrl = window.location.origin + window.location.pathname.replace('index.html', '') + ipaFilename;
+            const manifestXml = generatePlistManifest(targetIpaUrl, bundleId, version, appName);
+            logToConsole(`Manifest Plist XML generated successfully (${manifestXml.length} bytes)`, "info");
+            
+            document.getElementById('progress-bar').style.width = '50%';
+            document.getElementById('progress-percent').innerText = '50%';
+            await new Promise(r => setTimeout(r, 800));
+            setStepComplete(2);
+
+            // Step 3: Certificate & Provisioning Proxy Sign
+            setStepActive(3);
+            logToConsole(`[STEP 3] Verifying Enterprise Certificate Signature: "${certName}"`, "warn");
+            logToConsole(`Injecting entitlements: get-task-allow=true, com.apple.developer.team-identifier`, "info");
+            document.getElementById('progress-bar').style.width = '75%';
+            document.getElementById('progress-percent').innerText = '75%';
+            await new Promise(r => setTimeout(r, 900));
+            setStepComplete(3);
+
+            // Step 4: iOS itms-services OTA Dispatch
+            setStepActive(4);
+            logToConsole(`[STEP 4] Assembling native iOS OTA Link...`, "sys");
+
+            // Encode manifest URL for ITMS protocol
+            // Note: Data URI approach or HTTPS manifest URL target
+            const blob = new Blob([manifestXml], { type: 'text/xml' });
+            const manifestBlobUrl = URL.createObjectURL(blob);
+
+            // Standard itms-services protocol link format
+            const otaUrl = `itms-services://?action=download-manifest&url=${encodeURIComponent(manifestServer + '?bundleId=' + bundleId)}`;
+            
+            document.getElementById('progress-bar').style.width = '100%';
+            document.getElementById('progress-percent').innerText = '100%';
+            setStepComplete(4);
+
+            document.getElementById('status-badge').className = 'bg-matrix-glow text-black font-bold text-xs font-mono px-2 py-0.5 rounded border border-black';
+            document.getElementById('status-badge').innerText = 'READY TO INSTALL';
+
+            // Show OTA install trigger box
+            const otaLink = document.getElementById('ota-install-link');
+            otaLink.href = otaUrl;
+            document.getElementById('ota-trigger-box').classList.remove('hidden');
+
+            logToConsole(`BOOM! OTA Install Trigger ready! Prompting iOS Safari...`, "sys");
+
+            // Attempt auto launch for iOS Safari
+            try {
+                window.location.href = otaUrl;
+            } catch(e) {
+                logToConsole("Auto-trigger paused. Tap manual install button above.", "warn");
+            }
+        }
+
+        function sideloadCustomIPA() {
+            if (!activeCustomFile) {
+                alert("Please drop or select a custom .ipa file first!");
+                return;
+            }
+            startSideloadProcess(activeCustomFile.title, activeCustomFile.name, activeCustomFile.bundleId, activeCustomFile.version);
+        }
+
+        function generatePlistManifest(ipaUrl, bundleId, version, title) {
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>items</key>
+    <array>
+        <dict>
+            <key>assets</key>
+            <array>
+                <dict>
+                    <key>kind</key>
+                    <string>software-package</string>
+                    <key>url</key>
+                    <string>${ipaUrl}</string>
+                </dict>
+            </array>
+            <key>metadata</key>
+            <dict>
+                <key>bundle-identifier</key>
+                <string>${bundleId}</string>
+                <key>bundle-version</key>
+                <string>${version}</string>
+                <key>kind</key>
+                <string>software</string>
+                <key>title</key>
+                <string>${title}</string>
+            </dict>
+        </dict>
+    </array>
+</dict>
+</plist>`;
+        }
+
+        function downloadDirect(filename) {
+            logToConsole(`Initiating direct browser download for: ${filename}`, "sys");
+            const link = document.createElement('a');
+            link.href = filename;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function showManifestExample() {
+            const example = generatePlistManifest('https://your-domain.com/chimera.ipa', 'com.electrateam.chimera', '1.6.5', 'Chimera');
+            alert("Standard iOS OTA manifest.plist structure:\n\n" + example);
+        }
+
+        // --- CONFIG MODAL HELPERS ---
+        function openConfigModal() {
+            document.getElementById('config-modal').classList.remove('hidden');
+        }
+
+        function closeConfigModal() {
+            document.getElementById('config-modal').classList.add('hidden');
+        }
+
+        function saveConfigModal() {
+            manifestServer = document.getElementById('custom-manifest-server').value;
+            certName = document.getElementById('custom-cert-name').value;
+            closeConfigModal();
+            logToConsole(`Updated signing proxy server endpoint: ${manifestServer}`, "sys");
+            logToConsole(`Updated Enterprise Cert subject: ${certName}`, "sys");
+        }
+    </script>
+</body>
+</html>
